@@ -60,7 +60,30 @@ See [`docs/requirements.md`](docs/requirements.md) §12 for the full rationale.
 
 ## Getting started
 
-> Build instructions will be added once the firmware scaffolding is in place.
+This repository now includes the initial project scaffold and the first executable timing-core
+implementation used to validate the core clock behaviour before hardware-specific firmware is
+added.
+
+### Current implementation status
+
+- Shared timing model and state transitions are in place in
+  [`firmware/common/timing_core.py`](firmware/common/timing_core.py).
+- Controller, display, and buzzer runtime scaffolds are now implemented in
+  [`firmware/common/controller_runtime.py`](firmware/common/controller_runtime.py),
+  [`firmware/common/display_runtime.py`](firmware/common/display_runtime.py), and
+  [`firmware/common/buzzer_runtime.py`](firmware/common/buzzer_runtime.py).
+- Protocol versioning and base ESP-NOW message schema are documented in
+  [`docs/protocol.md`](docs/protocol.md).
+- A native unit-test harness is available in [`tests/test_timing_core.py`](tests/test_timing_core.py)
+  and [`tests/test_runtime_control.py`](tests/test_runtime_control.py).
+- The repository structure is now aligned to the recommended monorepo layout from the
+  requirements document.
+
+### Run the timing tests
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
 
 ## Hardware
 
