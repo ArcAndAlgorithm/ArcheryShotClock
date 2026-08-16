@@ -1,71 +1,89 @@
-# Archery Shot Clock & Match Timing System — Requirements Specification
+# Archery Timer
 
-**Version:** 0.2 (design decisions resolved; ready for repository setup)
-**Rules reference:** World Archery Book 3 — Target Archery, Version 2026-08-15
-**Status:** All open questions (§9) resolved. Ready to scaffold the GitHub repository per §12.5.
+A wireless, ESP32-based shot clock and match timing system for target archery, built to
+comply with [World Archery Book 3 — Target Archery](docs/requirements.md) rules. Designed
+for indoor and outdoor use, covering both qualification rounds and match play, across
+Individual, Team, and Mixed Team events.
 
----
+One **Controller** unit (buttons, keypad, and a built-in web UI) drives any number of
+**Display** units (RGB dot-matrix panels) and **Buzzer** units (audio signals) over
+low-latency ESP-NOW, so a single director of shooting can run a shot clock across a large
+field with several displays in sync.
 
-## 1. Purpose & Scope
+## Features
 
-Build a wireless, ESP32-based shot-clock and (optionally) match-control system for target
-archery, compliant with World Archery Book 3, usable indoors and outdoors, for
-qualification rounds and match play, across Individual, Team and Mixed Team events.
+- **All World Archery timing modes** — individual and team, alternating and
+  non-alternating, qualification and match play, shoot-offs, and practice sessions, per
+  Article 11.2/11.3.
+- **Multiple synchronised displays** — pair as many RGB dot-matrix panels as a field
+  needs; all show the same clock and light state (red/green/yellow) in sync.
+- **Optional match logic** — end/arrow tracking, set-play and cumulative scoring, togglable
+  independently of the core timing engine.
+- **Web UI** — setup, live monitoring, and remote control, hosted directly on the
+  Controller (no extra hardware required).
+- **Dedicated audio signalling** — separate buzzer units generate the exact sound-signal
+  patterns required by Article 11.3, plus an optional PA line-out.
+- **Suspension/resume handling** — correctly recalculates remaining time per Article
+  11.2.4 for both individual and team events.
+- **Emergency stop** — a dedicated physical control that works independently of Wi-Fi/UI
+  state.
 
-The system consists of:
+## Project status
 
-1. **One Controller unit** — operated by the director of shooting, hosts the web UI,
-   bridges Wi-Fi ↔ ESP-NOW.
-2. **One or more Display units** — dot-matrix LED panels, ESP-NOW clients, no local UI.
-3. **One or more Buzzer/Acoustic units** — separate ESP-NOW clients producing the sound
-   signals required by Article 11.3, and/or a line-out audio trigger for a PA system.
-4. **Optional Companion device** (Raspberry Pi / laptop / phone running a web app) — joins
-   the controller's network as a client for future features (live-stream overlays,
-   detailed scoring UI, remote monitoring). **Not required for core operation.**
+🚧 **In development.** Full requirements, architecture, and design decisions are documented
+in [`docs/requirements.md`](docs/requirements.md). See that document for the complete
+functional specification, timing state machines, and rulebook article references.
 
-Match/scoring logic (end tracking, set-play, cumulative scoring) is an **optional module**,
-togglable on/off, layered on top of the core timing engine. Core timing must work
-completely independently of it.
+## Repository structure
 
-Out of scope for v1 (explicitly deferred):
-- Multiple independent simultaneous matches on one field with fully isolated
-  clocks/signals (Article 11.3.4) — architecture should not preclude this later, but it is
-  not a v1 requirement.
-- Automatic arrow-value detection (all scores are entered by a human).
-- Live-stream graphics/overlay integration (companion device leaves room for this).
+```
+archery-timer/
+├── firmware/
+│   ├── common/       # Shared code: ESP-NOW message schema, signal codes, timing logic
+│   ├── controller/   # Buttons, keypad, Wi-Fi AP, web server, ESP-NOW broadcast master
+│   ├── display/       # RGB dot-matrix rendering, ESP-NOW receive-only client
+│   └── buzzer/        # Audio signal generation, ESP-NOW receive-only client
+├── webui/             # Web UI source, built into the controller's firmware image
+├── docs/              # Requirements, protocol spec, rulebook-to-code mapping
+├── tools/             # Python scripts (node emulator, load testing, etc.)
+├── tests/             # Unit tests
+└── platformio.ini     # Multi-target build configuration
+```
 
----
+## Tech stack
 
-## 2. System Architecture
+- **Firmware:** C++ on ESP-IDF, built with [PlatformIO](https://platformio.org/)
+- **Web UI:** HTML/CSS/vanilla JavaScript, served from the Controller over WebSocket + HTTP
+- **Tooling:** Python (test/simulation scripts, CI helpers)
 
-### 2.1 Network topology
+See [`docs/requirements.md`](docs/requirements.md) §12 for the full rationale.
 
-- **ESP-NOW** — primary control channel, controller → displays and controller → buzzer
-  units. Chosen for low, deterministic latency and no dependency on a router. Used for all
-  time-critical signals: clock start/stop/pause, countdown value updates, light-colour
-  state (Article 11.3.1), and sound-trigger events.
-- **Wi-Fi (controller as Access Point, or joining an existing network)** — hosts the web
-  UI (HTTP/WebSocket) for setup, mode selection, scoring input, and monitoring. Runs
-  concurrently with ESP-NOW on the controller's single radio (standard ESP-NOW + Wi-Fi
-  coexistence mode — same channel required).
-- **Companion device (optional)** — connects to the controller's Wi-Fi as an ordinary web
-  client; no protocol beyond the existing web UI/WebSocket API is required for v1. Future
-  streaming features can extend this same API.
+## Getting started
 
-### 2.2 Units
+> Build instructions will be added once the firmware scaffolding is in place.
 
-| Unit | Role | Inputs | Outputs |
-|---|---|---|---|
-| Controller | Master clock, state machine owner, Wi-Fi AP + web server | Start, Stop, Next End, Reset End, Pause/Resume buttons; numeric keypad for scores | ESP-NOW broadcast to displays/buzzers; web UI |
-| Display (×N) | Shows countdown, light colour state, and (if enabled) score/arrow info | ESP-NOW receive only | Dot-matrix LED panel |
-| Buzzer (×N) | Produces audio signals per Article 11.3 | ESP-NOW receive only | Onboard speaker/buzzer; line-out audio trigger for PA |
-| Companion (optional) | Future scoring/streaming UI | Wi-Fi client | Browser-based UI |
+## Hardware
 
-### 2.3 Pairing / grouping
+- ESP32 modules (Controller, Display ×N, Buzzer ×N)
+- RGB dot-matrix LED panels (Display units)
+- Speaker/buzzer (Buzzer units), optional PA line-out
+- IP-rated enclosures for outdoor use
 
-- Displays and buzzer units must be **addable/removable via the web UI** (e.g., scan for
-  unpaired ESP-NOW nodes broadcasting an announce packet, add to the active session by MAC
-  address).
+Exact hardware models and part numbers are still being finalised and will be added here.
+
+## Rulebook compliance
+
+This project is built against **World Archery Book 3 — Target Archery, Version
+2026-08-15**. Every timing mode and match-logic behaviour in the requirements document is
+traced back to the specific article it implements — see
+[`docs/requirements.md`](docs/requirements.md) and
+[`docs/rulebook-mapping.md`](docs/rulebook-mapping.md) (once available) for full
+traceability. This is an independent, unofficial implementation and is not affiliated with
+or endorsed by World Archery.
+
+## License
+
+> Add a license (e.g., MIT, Apache 2.0, or GPLv3) before making the repository public.  address).
 - All paired displays for a session receive **identical state** (same clock, same lights);
   this is what allows 2–4 units to cover a large field for one match.
 - One or more displays may be flagged in the web UI as **"scoring display"** so that in
